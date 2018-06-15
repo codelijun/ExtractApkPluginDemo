@@ -1,4 +1,4 @@
-package com.example.pluginapkdemo.utils;
+package com.example.pluginapkdemo.manager;
 
 import android.content.Context;
 import android.os.Environment;
