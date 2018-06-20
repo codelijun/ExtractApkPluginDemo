@@ -7,11 +7,13 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.ImageView;
 
 import com.example.pluginapkdemo.BuildConfig;
@@ -30,6 +32,7 @@ public class MainActivity extends Activity implements ILiveWallpaperViewListener
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        initState();
 
         //注册屏幕亮灭屏的广播
         IntentFilter filter = new IntentFilter();
@@ -71,6 +74,16 @@ public class MainActivity extends Activity implements ILiveWallpaperViewListener
         //开始获取动态壁纸
         mWallpaperApkManager.startExtractDexFromApk(apkPath, dexPath);
         mWallpaperApkManager.startLoadLiveWallpaperView(this);
+    }
+
+    /**
+     * 沉浸式状态栏
+     */
+    private void initState() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+        }
     }
 
     @Override
