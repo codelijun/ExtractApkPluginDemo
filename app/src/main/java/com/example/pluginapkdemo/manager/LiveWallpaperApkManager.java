@@ -10,7 +10,6 @@ import android.util.Log;
 
 import com.example.pluginapkdemo.BuildConfig;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
@@ -19,6 +18,7 @@ import java.util.concurrent.Callable;
 
 import bolts.Continuation;
 import bolts.Task;
+import dalvik.system.DexClassLoader;
 
 /**
  * Created by lijun on 2018/6/14
@@ -29,7 +29,6 @@ public class LiveWallpaperApkManager {
     private static final String STATICAL_WALLPAPER_RES_NAME = "statical_wallpaper.jpg";
     private static final String SURFACE_PREVIEW_NAME = "com.apusapps.livewallpaper.core.LiveWallpaperPreview";
 
-    private String mApkPath;
     private Context mContext;
     private Method mRenderDestroy;
     private Method mRenderScreenSwitch;
@@ -37,15 +36,10 @@ public class LiveWallpaperApkManager {
     private PluginApkManager mPluginApkManager;
     private ILiveWallpaperViewListener mWallpaperViewListener;
 
-    public LiveWallpaperApkManager(Context context, String apkPath) {
-        File apkFile = new File(apkPath);
-        if (!apkFile.exists() || !apkFile.isFile()) {
-            if (DEBUG) {
-                Log.e(TAG, " LiveWallpaperApkManager() APK的路径必须是带有文件名的绝对路径,请检查参数的合法性!");
-            }
-        }
+    private boolean mIsExtractFinish;
+
+    public LiveWallpaperApkManager(Context context) {
         this.mContext = context;
-        this.mApkPath = apkPath;
         this.mPluginApkManager = new PluginApkManager(context);
     }
 
@@ -54,8 +48,15 @@ public class LiveWallpaperApkManager {
      *
      * @return 静态壁纸的流
      */
-    public InputStream getStaticalWallpaper() {
-        mPluginApkManager.extractAssetFromApk(mApkPath);
+    public InputStream getStaticalWallpaper(String apkPath) {
+        if (!FileManager.pathIsSpecificFile(apkPath)) {
+            if (DEBUG) {
+                Log.e(TAG, " getStaticalWallpaper() 参数路径必须是带有文件名的绝对路径,请检查参数的合法性!");
+            }
+            return null;
+        }
+
+        mPluginApkManager.extractAssetFromApk(apkPath);
         InputStream staticalWallpaper = null;
         try {
             staticalWallpaper = mPluginApkManager.getAssetManager().open(STATICAL_WALLPAPER_RES_NAME);
@@ -67,23 +68,48 @@ public class LiveWallpaperApkManager {
         return staticalWallpaper;
     }
 
+    public void startExtractDexFromApk(final String apkPath, final String dexPath) {
+        if (!FileManager.pathIsSpecificFile(apkPath)) {
+            if (DEBUG) {
+                Log.e(TAG, " startExtractDexFromApk() 参数路径必须是带有文件名的绝对路径,请检查参数的合法性!");
+            }
+            return;
+        }
+
+        mIsExtractFinish = false;
+        Task.callInBackground(new Callable<Object>() {
+            @Override
+            public Object call() throws Exception {
+                mPluginApkManager.extractDexFromApk(apkPath, dexPath);
+                mIsExtractFinish = true;
+                if (mWallpaperViewListener != null) {
+                    startLoadLiveWallpaperView(mWallpaperViewListener);
+                }
+                return null;
+            }
+        });
+    }
+
     /**
      * 开始解析apk 异步执行,由外部调用
      *
-     * @param dexPath               解析出来的dex文件存放的路径
      * @param wallpaperViewListener 解析完成后,传递SurfaceView的回调
      */
-    public void startExtractApk(final String dexPath, ILiveWallpaperViewListener wallpaperViewListener) {
-        if (DEBUG) {
-            Log.d(TAG, " startExtractApk() dexPath== " + dexPath);
-        }
+    public void startLoadLiveWallpaperView(ILiveWallpaperViewListener wallpaperViewListener) {
         this.mWallpaperViewListener = wallpaperViewListener;
+
+        if(!mIsExtractFinish){
+            if (DEBUG) {
+                Log.d(TAG, " startLoadLiveWallpaperView() APK还没有解压完成,请等待解压完成...");
+            }
+            return;
+        }
 
         Task.callInBackground(new Callable<Object>() {
             @Override
             public Object call() throws Exception {
                 Looper.prepare();
-                return extractSurfaceViewFromApk(mApkPath, dexPath);
+                return extractSurfaceViewFromApk();
             }
         }).onSuccess(new Continuation<Object, Object>() {
             @Override
@@ -96,24 +122,11 @@ public class LiveWallpaperApkManager {
 
     /**
      * 解析APK包,从中提取出dex文件,进而获取到SurfaceView类
-     *
-     * @param apkPath apk包的全路径
-     * @param dexPath dex文件的存放路径
      */
-    private Object extractSurfaceViewFromApk(String apkPath, String dexPath) {
-        File dexFileDir = new File(dexPath);
-        if (dexFileDir.exists()) {
-            if (DEBUG) {
-                Log.d(TAG, " extractSurfaceViewFromApk() dex目录已经存在");
-            }
-            deleteAllFile(dexFileDir);
-        } else {
-            if (DEBUG) {
-                Log.d(TAG, " extractSurfaceViewFromApk() 不存在dex目录,创建一个新的目录");
-            }
-            dexFileDir.mkdirs();
+    private Object extractSurfaceViewFromApk() {
+        if (DEBUG) {
+            Log.d(TAG, " extractSurfaceViewFromApk() ");
         }
-
         ContextWrapper contextWrapper = new ContextWrapper(mContext) {
             @Override
             public AssetManager getAssets() {
@@ -132,13 +145,21 @@ public class LiveWallpaperApkManager {
         };
 
         Object newInstance = null;
-        mPluginApkManager.extractDexFromApk(apkPath, dexPath);
+        Constructor constructor = null;
+        Class pluginDexClass = null;
         try {
-            Class pluginDexClass = mPluginApkManager.getPluginDexClassLoader().loadClass(SURFACE_PREVIEW_NAME);
-            Constructor constructor = pluginDexClass.getConstructor(Context.class);
-            mRenderScreenSwitch = pluginDexClass.getDeclaredMethod("onScreenSwitchChanged", boolean.class);
-            mRenderDestroy = pluginDexClass.getDeclaredMethod("onDestroy");
-            newInstance = constructor.newInstance(contextWrapper);
+            DexClassLoader dexClassLoader = mPluginApkManager.getPluginDexClassLoader();
+            if(dexClassLoader != null) {
+                pluginDexClass  = dexClassLoader.loadClass(SURFACE_PREVIEW_NAME);
+            }
+            if(pluginDexClass != null) {
+                constructor = pluginDexClass.getConstructor(Context.class);
+                mRenderDestroy = pluginDexClass.getDeclaredMethod("onDestroy");
+                mRenderScreenSwitch = pluginDexClass.getDeclaredMethod("onScreenSwitchChanged", boolean.class);
+            }
+            if(constructor != null) {
+                newInstance = constructor.newInstance(contextWrapper);
+            }
         } catch (Exception e) {
             if (DEBUG) {
                 Log.d(TAG, " extractSurfaceViewFromApk() error: " + Log.getStackTraceString(e));
@@ -148,46 +169,21 @@ public class LiveWallpaperApkManager {
     }
 
     /**
-     * 删除filePath目录下的所有文件, 即删除该目录下旧的dex文件
-     *
-     * @param filePath dex文件的存放路径
-     */
-    private void deleteAllFile(File filePath) {
-        if (filePath == null) {
-            if (DEBUG) {
-                Log.d(TAG, " deleteAllFile() 路径不能为空,请检查参数的合法性!");
-            }
-            return;
-        }
-        if (filePath.isDirectory()) {
-            File[] childFile = filePath.listFiles();
-            if (childFile != null && childFile.length > 0) {
-                for (File file : childFile) {
-                    if (DEBUG) {
-                        Log.d(TAG, " deleteAllFile() 传递进来的路径下的文件不为空,删除该路径下所有文件");
-                    }
-                    file.delete();
-                }
-            }
-        }
-    }
-
-    /**
      * 从解压出来的dex文件中获取SurfaceView类,并通过回调传递给UI线程
      */
-    private void loadLiveWallpaperView(Object newInstance) {
-        if (newInstance == null) {
+    private void loadLiveWallpaperView(Object object) {
+        if (object == null) {
             if (DEBUG) {
-                Log.e(TAG, " loadLiveWallpaperView() constructor不能为空,请检查参数的合法性!");
+                Log.e(TAG, " loadLiveWallpaperView() object不能为空,请检查参数的合法性!");
             }
             return;
         }
         if (DEBUG) {
-            Log.d(TAG, " loadLiveWallpaperView() newInstance 是GLSurfaceView? " + (newInstance instanceof GLSurfaceView)
+            Log.d(TAG, " loadLiveWallpaperView() newInstance 是GLSurfaceView? " + (object instanceof GLSurfaceView)
                     + " mWallpaperViewListener==null? " + (mWallpaperViewListener == null));
         }
-        if (newInstance instanceof GLSurfaceView) {
-            mGlSurfaceView = (GLSurfaceView) newInstance;
+        if (object instanceof GLSurfaceView) {
+            mGlSurfaceView = (GLSurfaceView) object;
             if (mWallpaperViewListener != null) {
                 mWallpaperViewListener.onLiveWallpaperView(mGlSurfaceView);
             }
@@ -216,6 +212,7 @@ public class LiveWallpaperApkManager {
         if (DEBUG) {
             Log.d(TAG, " onDestroy() ");
         }
+        this.mWallpaperViewListener = null;
         if (mRenderDestroy != null && mGlSurfaceView != null) {
             try {
                 mRenderDestroy.invoke(mGlSurfaceView);

@@ -7,11 +7,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
-import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -54,21 +52,25 @@ public class MainActivity extends Activity implements ILiveWallpaperViewListener
         FileManager.copyAssetsToFiles(this.getApplicationContext(), FILE_NAME, apkPath);
         //****** 将assets目录下的apk复制到私有目录下 完毕 ******* //
 
+        //删除dex目录下的所有文件,以便更新到最新
+        FileManager.deleteAllFileInDir(dexPath);
+
         //开始解压apk
         apkPath = apkPath + "/" + FILE_NAME;
-        mWallpaperApkManager = new LiveWallpaperApkManager(this.getApplicationContext(), apkPath);
+        mWallpaperApkManager = new LiveWallpaperApkManager(this.getApplicationContext());
 
         //显示静态壁纸
         ImageView imageView = new ImageView(this);
         imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
         ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         imageView.setLayoutParams(layoutParams);
-        Bitmap bitmap = BitmapFactory.decodeStream(mWallpaperApkManager.getStaticalWallpaper());
+        Bitmap bitmap = BitmapFactory.decodeStream(mWallpaperApkManager.getStaticalWallpaper(apkPath));
         imageView.setImageBitmap(bitmap);
         setContentView(imageView);
 
         //开始获取动态壁纸
-        mWallpaperApkManager.startExtractApk(dexPath, this);
+        mWallpaperApkManager.startExtractDexFromApk(apkPath, dexPath);
+        mWallpaperApkManager.startLoadLiveWallpaperView(this);
     }
 
     @Override

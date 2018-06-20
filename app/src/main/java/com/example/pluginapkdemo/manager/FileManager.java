@@ -63,4 +63,59 @@ public class FileManager {
             }
         }
     }
+
+    /**
+     * 判断路径是否具体到文件,即路径中是否带有文件
+     *
+     * @param targetPath
+     * @return
+     */
+    public static boolean pathIsSpecificFile(String targetPath) {
+        File apkFile = new File(targetPath);
+        if (apkFile.exists() && apkFile.isFile()) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 删除某路径下的所有文件,如果路径不存在,则创建一个新的路径
+     *
+     * @param targetPath
+     */
+    public static void deleteAllFileInDir(String targetPath) {
+        if (targetPath == null) {
+            return;
+        }
+
+        File targetFileDir = new File(targetPath);
+        if (targetFileDir.isFile()) {
+            targetFileDir.delete();
+            return;
+        }
+        if (targetFileDir.isDirectory()) {
+            if (targetFileDir.exists()) {
+                deleteAllFile(targetFileDir);
+            } else {
+                targetFileDir.mkdirs();
+            }
+        }
+    }
+
+    /**
+     * 删除filePath目录下的所有文件, 即删除该目录下旧的dex文件
+     *
+     * @param filePath dex文件的存放路径
+     */
+    private static void deleteAllFile(File filePath) {
+        if (filePath == null) {
+            return;
+        }
+        File[] childFile = filePath.listFiles();
+        if (childFile != null && childFile.length > 0) {
+            for (File file : childFile) {
+                file.delete();
+            }
+        }
+    }
 }
