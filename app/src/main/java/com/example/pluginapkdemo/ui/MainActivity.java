@@ -72,8 +72,7 @@ public class MainActivity extends Activity implements ILiveWallpaperViewListener
         setContentView(imageView);
 
         //开始获取动态壁纸
-        mWallpaperApkManager.startExtractDexFromApk(apkPath, dexPath);
-        mWallpaperApkManager.startLoadLiveWallpaperView(this);
+        mWallpaperApkManager.startLoadLiveWallpaperView(apkPath, dexPath, this);
     }
 
     /**

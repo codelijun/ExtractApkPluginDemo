@@ -6,6 +6,7 @@ import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.opengl.GLSurfaceView;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.example.pluginapkdemo.BuildConfig;
@@ -30,13 +31,12 @@ public class LiveWallpaperApkManager {
     private static final String SURFACE_PREVIEW_NAME = "com.apusapps.livewallpaper.core.LiveWallpaperPreview";
 
     private Context mContext;
+    private String mLastDexPath;
     private Method mRenderDestroy;
     private Method mRenderScreenSwitch;
     private GLSurfaceView mGlSurfaceView;
     private PluginApkManager mPluginApkManager;
     private ILiveWallpaperViewListener mWallpaperViewListener;
-
-    private boolean mIsExtractFinish;
 
     public LiveWallpaperApkManager(Context context) {
         this.mContext = context;
@@ -68,7 +68,19 @@ public class LiveWallpaperApkManager {
         return staticalWallpaper;
     }
 
-    public void startExtractDexFromApk(final String apkPath, final String dexPath) {
+    /**
+     * 开始解析apk 异步执行,由外部调用
+     *
+     * @param wallpaperViewListener 解析完成后,传递SurfaceView的回调
+     */
+    public void startLoadLiveWallpaperView(final String apkPath, final String dexPath, ILiveWallpaperViewListener wallpaperViewListener) {
+        if (TextUtils.isEmpty(apkPath) || TextUtils.isEmpty(dexPath)) {
+            if (DEBUG) {
+                Log.d(TAG, " startLoadLiveWallpaperView() apk的路径和dex的路径都不能为空,请检查参数的合法性!");
+            }
+            return;
+        }
+
         if (!FileManager.pathIsSpecificFile(apkPath)) {
             if (DEBUG) {
                 Log.e(TAG, " startExtractDexFromApk() 参数路径必须是带有文件名的绝对路径,请检查参数的合法性!");
@@ -76,39 +88,21 @@ public class LiveWallpaperApkManager {
             return;
         }
 
-        mIsExtractFinish = false;
-        Task.callInBackground(new Callable<Object>() {
-            @Override
-            public Object call() throws Exception {
-                mPluginApkManager.extractDexFromApk(apkPath, dexPath);
-                mIsExtractFinish = true;
-                if (mWallpaperViewListener != null) {
-                    startLoadLiveWallpaperView(mWallpaperViewListener);
-                }
-                return null;
-            }
-        });
-    }
-
-    /**
-     * 开始解析apk 异步执行,由外部调用
-     *
-     * @param wallpaperViewListener 解析完成后,传递SurfaceView的回调
-     */
-    public void startLoadLiveWallpaperView(ILiveWallpaperViewListener wallpaperViewListener) {
-        this.mWallpaperViewListener = wallpaperViewListener;
-
-        if(!mIsExtractFinish){
+        if (mLastDexPath != null && mLastDexPath.equals(dexPath)) {
             if (DEBUG) {
-                Log.d(TAG, " startLoadLiveWallpaperView() APK还没有解压完成,请等待解压完成...");
+                Log.d(TAG, " startLoadLiveWallpaperView() 此版本APK的dex文件已经存在,不需要再解压");
             }
             return;
         }
+
+        this.mLastDexPath = dexPath;
+        this.mWallpaperViewListener = wallpaperViewListener;
 
         Task.callInBackground(new Callable<Object>() {
             @Override
             public Object call() throws Exception {
                 Looper.prepare();
+                mPluginApkManager.extractDexFromApk(apkPath, dexPath);
                 return extractSurfaceViewFromApk();
             }
         }).onSuccess(new Continuation<Object, Object>() {
@@ -149,15 +143,15 @@ public class LiveWallpaperApkManager {
         Class pluginDexClass = null;
         try {
             DexClassLoader dexClassLoader = mPluginApkManager.getPluginDexClassLoader();
-            if(dexClassLoader != null) {
-                pluginDexClass  = dexClassLoader.loadClass(SURFACE_PREVIEW_NAME);
+            if (dexClassLoader != null) {
+                pluginDexClass = dexClassLoader.loadClass(SURFACE_PREVIEW_NAME);
             }
-            if(pluginDexClass != null) {
+            if (pluginDexClass != null) {
                 constructor = pluginDexClass.getConstructor(Context.class);
                 mRenderDestroy = pluginDexClass.getDeclaredMethod("onDestroy");
                 mRenderScreenSwitch = pluginDexClass.getDeclaredMethod("onScreenSwitchChanged", boolean.class);
             }
-            if(constructor != null) {
+            if (constructor != null) {
                 newInstance = constructor.newInstance(contextWrapper);
             }
         } catch (Exception e) {
