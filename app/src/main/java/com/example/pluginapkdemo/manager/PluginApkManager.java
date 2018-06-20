@@ -8,7 +8,6 @@ import android.util.Log;
 
 import com.example.pluginapkdemo.BuildConfig;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import dalvik.system.DexClassLoader;
@@ -28,25 +27,42 @@ public class PluginApkManager {
         this.mContext = context;
     }
 
-    public void loadApk(String dexPath) {
+    /**
+     * 从APK中解析AssetManager,用于获取资源文件
+     *
+     * @param apkPath apk包存放的路径
+     */
+    public void extractAssetFromApk(String apkPath) {
         if (DEBUG) {
-            Log.d(TAG, " loadApk() " + "dexPath = [" + dexPath + "]");
+            Log.d(TAG, " extractAssetFromApk() ");
         }
-        mPluginDexClassLoader = new DexClassLoader(dexPath, mContext.getDir("dex", Context.MODE_PRIVATE).getAbsolutePath(), null, mContext.getClassLoader());
         try {
             mAssetManager = AssetManager.class.newInstance();
             Method addAssetPath = AssetManager.class.getMethod("addAssetPath", String.class);
-            addAssetPath.invoke(mAssetManager, dexPath);
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
+            addAssetPath.invoke(mAssetManager, apkPath);
+        } catch (Exception e) {
+            if (DEBUG) {
+                Log.e(TAG, " extractAssetFromApk() error: " + Log.getStackTraceString(e));
+            }
         }
-        mPluginResources = new Resources(mAssetManager, mContext.getResources().getDisplayMetrics(), mContext.getResources().getConfiguration());
+        mPluginResources = new Resources(mAssetManager, mContext.getResources().getDisplayMetrics(),
+                mContext.getResources().getConfiguration());
+    }
+
+    /**
+     * 从APK中解析dex文件
+     *
+     * @param apkPath APK存放的路径
+     * @param dexPath dex存放的路径
+     */
+    public void extractDexFromApk(String apkPath, String dexPath) {
+        if (DEBUG) {
+            Log.d(TAG, " extractDexFromApk() " + "apkPath = [" + apkPath + "]\n" + "dexPath= " + dexPath);
+        }
+        mPluginDexClassLoader = new DexClassLoader(apkPath, dexPath, null, mContext.getClassLoader());
+        if (mAssetManager == null) {
+            extractAssetFromApk(apkPath);
+        }
     }
 
     public DexClassLoader getPluginDexClassLoader() {

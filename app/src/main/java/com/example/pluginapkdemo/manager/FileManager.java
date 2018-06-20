@@ -1,7 +1,6 @@
 package com.example.pluginapkdemo.manager;
 
 import android.content.Context;
-import android.os.Environment;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -12,14 +11,8 @@ public class FileManager {
     /**
      * Copy the APK "assets/" to "/data/data/package-name/file/"
      */
-    public static void copyAssetsToFiles(Context context, String fileName, boolean isExternalStorage) {
-        String fileDir;
-        if (isExternalStorage) {
-            fileDir = Environment.getExternalStorageDirectory().getAbsolutePath();
-        } else {
-            fileDir = context.getFilesDir().getAbsolutePath();
-        }
-        File workingDir = new File(fileDir);
+    public static void copyAssetsToFiles(Context context, String fileName, String apkPath) {
+        File workingDir = new File(apkPath);
         if (!workingDir.exists()) {
             workingDir.mkdirs();
         }
