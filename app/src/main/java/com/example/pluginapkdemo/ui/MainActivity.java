@@ -19,15 +19,15 @@ import android.widget.ImageView;
 import com.example.pluginapkdemo.BuildConfig;
 import com.example.pluginapkdemo.manager.FileManager;
 import com.example.pluginapkdemo.manager.ILiveWallpaperViewListener;
-import com.example.pluginapkdemo.manager.LiveWallpaperApkManager;
+import com.example.pluginapkdemo.manager.LiveWallpaperPluginManager;
 
 public class MainActivity extends Activity implements ILiveWallpaperViewListener {
     private static final boolean DEBUG = BuildConfig.DEBUG;
     private static final String TAG = "MainActivity";
-    private static final String FILE_NAME = "app-release.apk";
+    private static final String FILE_NAME = "defaultWallpaper.apk";
     private static final boolean SOURCE_FILE_FROM_EXTERNAL = false; //解压外部存储的apk,还是私有目录下的apk?
 
-    private LiveWallpaperApkManager mWallpaperApkManager;
+    private LiveWallpaperPluginManager mWallpaperApkManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,7 +47,7 @@ public class MainActivity extends Activity implements ILiveWallpaperViewListener
             apkPath = Environment.getExternalStorageDirectory().getAbsolutePath();
         } else {                        //从私有目录解压apk
             // 获取源apk存储的路径
-            apkPath = getFilesDir().getAbsolutePath();
+            apkPath = getFilesDir().getAbsolutePath() + "/customize/liveWallpaperApk/com.apusapps.livewallpaper/1";
         }
         String dexPath = getDir("dex", Context.MODE_PRIVATE).getAbsolutePath();
 
@@ -60,7 +60,7 @@ public class MainActivity extends Activity implements ILiveWallpaperViewListener
 
         //开始解压apk
         apkPath = apkPath + "/" + FILE_NAME;
-        mWallpaperApkManager = new LiveWallpaperApkManager(this.getApplicationContext());
+        mWallpaperApkManager = new LiveWallpaperPluginManager(this.getApplicationContext());
 
         //显示静态壁纸
         ImageView imageView = new ImageView(this);

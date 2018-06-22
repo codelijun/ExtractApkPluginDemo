@@ -24,9 +24,9 @@ import dalvik.system.DexClassLoader;
 /**
  * Created by lijun on 2018/6/14
  */
-public class LiveWallpaperApkManager {
+public class LiveWallpaperPluginManager {
     private static final boolean DEBUG = BuildConfig.DEBUG;
-    private static final String TAG = "LiveWallpaperApkManager";
+    private static final String TAG = "LiveWallpaperPluginManager";
     private static final String STATICAL_WALLPAPER_RES_NAME = "statical_wallpaper.jpg";
     private static final String SURFACE_PREVIEW_NAME = "com.apusapps.livewallpaper.core.LiveWallpaperPreview";
 
@@ -35,12 +35,12 @@ public class LiveWallpaperApkManager {
     private Method mRenderDestroy;
     private Method mRenderScreenSwitch;
     private GLSurfaceView mGlSurfaceView;
-    private PluginApkManager mPluginApkManager;
+    private PluginManager mPluginApkManager;
     private ILiveWallpaperViewListener mWallpaperViewListener;
 
-    public LiveWallpaperApkManager(Context context) {
+    public LiveWallpaperPluginManager(Context context) {
         this.mContext = context;
-        this.mPluginApkManager = new PluginApkManager(context);
+        this.mPluginApkManager = new PluginManager(context);
     }
 
     /**

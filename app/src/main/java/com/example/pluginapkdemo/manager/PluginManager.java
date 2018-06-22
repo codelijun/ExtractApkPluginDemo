@@ -14,16 +14,17 @@ import dalvik.system.DexClassLoader;
 
 /**
  * Created by lijun on 2018/6/14
+ * https://blog.csdn.net/mynameishuangshuai/article/details/52737581
  */
-public class PluginApkManager {
+public class PluginManager {
     private static final boolean DEBUG = BuildConfig.DEBUG;
-    private static final String TAG = "PluginApkManager";
+    private static final String TAG = "PluginManager";
     private DexClassLoader mPluginDexClassLoader;
     private Resources mPluginResources;
     private AssetManager mAssetManager;
     private Context mContext;
 
-    public PluginApkManager(Context context) {
+    public PluginManager(Context context) {
         this.mContext = context;
     }
 
@@ -51,7 +52,8 @@ public class PluginApkManager {
 
     /**
      * 从APK中解析dex文件
-     *
+     * api>=26, dexPath 参数是没用的,dexPath不能自定义,固定是 "/apkPath/oat/x86/"该路径下会解析出两个文件分别是odex和vdex文件
+     * 尽管没有用到,dexPath也不能为null,否则不能正常解析apk,但是可以传递空字符串.
      * @param apkPath APK存放的路径
      * @param dexPath dex存放的路径
      */

@@ -94,11 +94,11 @@ public class FileManager {
             return;
         }
         if (targetFileDir.isDirectory()) {
-            if (targetFileDir.exists()) {
-                deleteAllFile(targetFileDir);
-            } else {
-                targetFileDir.mkdirs();
-            }
+            deleteAllFile(targetFileDir);
+        }
+
+        if (!targetFileDir.exists()) {
+            targetFileDir.mkdirs();
         }
     }
 
