@@ -4,17 +4,15 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
-import android.opengl.GLSurfaceView;
-import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.View;
 
 import com.example.pluginapkdemo.BuildConfig;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.concurrent.Callable;
 
@@ -35,7 +33,7 @@ public class LiveWallpaperPluginManager {
     private String mLastDexPath;
     private Method mRenderDestroy;
     private Method mRenderScreenSwitch;
-    private GLSurfaceView mGlSurfaceView;
+    private View mGlSurfaceView;
     private PluginManager mPluginApkManager;
     private ILiveWallpaperViewListener mWallpaperViewListener;
 
@@ -172,8 +170,8 @@ public class LiveWallpaperPluginManager {
 
         try {
             Object object = constructor.newInstance(contextWrapper);
-            if (object instanceof GLSurfaceView) {
-                mGlSurfaceView = (GLSurfaceView) object;
+            if (object instanceof View) {
+                mGlSurfaceView = (View) object;
                 if (mWallpaperViewListener != null) {
                     mWallpaperViewListener.onLiveWallpaperView(mGlSurfaceView);
                 }
